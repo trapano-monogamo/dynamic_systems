@@ -10,9 +10,17 @@ module Examples
 , lorentzAttractorPlotter
 , lorentzAttractorTestPoints
 
+, centrifugalGovernor
+, centrifugalGovernorPlotter
+, centrifugalGovernorTestPoints
+
 , sphericalPendulum
 , sphericalPendulumPlotter
 , sphericalPendulumTestPoints
+
+, rutherfordScattering
+, rutherfordScatteringPlotter
+, rutherfordScatteringTestPoints
 
 , module Rendering
 ) where
@@ -86,23 +94,58 @@ lorentzAttractorTestPoints = [ ([0.1,-10,1.3],white) ]
 
 
 
+{- Centrifugal Governor -}
+
+centrifugalGovernor :: ODE
+centrifugalGovernor _ (phi:phi':theta:theta':[]) =
+  [ l / (2 * m * len**2 * (sin theta)**2)
+  , 0
+  , theta'
+  , (l**2 * cos theta) / (4 * m**2 * l**4 * (sin theta)**3) - (g/l) * (sin theta)
+  ]
+  where l = 2
+        m = 1
+        len = 1
+        g = 9.81
+centrifugalGovernor _ _ = [0,0,0,0] -- invalid point
+
+centrifugalGovernorPlotter :: State -> [Float] -> (Float,Float,Float)
+centrifugalGovernorPlotter state (phi:_:theta:_:[]) = spacePlotter3D state [x,y,z]
+  where x =  l * (sin phi) * (sin theta)
+        y = -l * (cos theta)
+        z =  l * (cos phi) * (sin theta)
+        l = 1
+-- centrifugalGovernorPlotter state (phi:_:theta:_:[]) = (x,y,0)
+--   where x =  l * (sin phi) * (sin theta)
+--         y = -l * (cos theta)
+--         l = 1
+centrifugalGovernorPlotter _ _ = (0,0,0)
+
+centrifugalGovernorTestPoints :: [([Float],Color)]
+centrifugalGovernorTestPoints =
+  [ ([0.0, phi', theta, 0.0], makeColor 1.0 0.0 1.0 1.0)
+  , ([ pi, phi', theta, 0.0], makeColor 0.0 1.0 1.0 1.0) ]
+  where l = 2
+        m = 1
+        len = 1
+        theta = 1.5
+        phi' = l / (2 * m * len**2 * (sin theta)**2)
+
+
+
 {- Spherical Pendulum -}
 
--- easy mass: m = 1
--- gravity: g = 9.81
-
--- phi is a cyclical coordinate (phi and phi' are not used => _)
 sphericalPendulum :: ODE
-sphericalPendulum _ (_:_:theta:theta':[]) =
-  [ l / (len**2 * (sin theta) ** 2)
+sphericalPendulum _ (_:phi':theta:theta':[]) =
+  [ l / (len**2 * (sin theta)**2)
   , 0
   , theta'
   , (l**2 / len**4) * ((cos theta) / ((sin theta) ** 3)) - (g/len) * (sin theta)
   ]
   where g = 9.81
-        l = 1
+        l = 1.0 -- !!! this way the initial velocities set for the test points don't matter, but HOW THE HELL do I make different points have different angular momentums
         len = 1.0
-sphericalPendulum _ _ = [0,0,0,0] -- invalid points
+sphericalPendulum _ _ = [0,0,0,0] -- invalid point
 
 sphericalPendulumPlotter :: State -> [Float] -> (Float,Float,Float)
 sphericalPendulumPlotter state (phi:_:theta:_:[]) = spacePlotter3D state [x,y,z]
@@ -114,8 +157,44 @@ sphericalPendulumPlotter _ _ = (0,0,0)
 
 sphericalPendulumTestPoints :: [([Float],Color)]
 sphericalPendulumTestPoints = ((map (makePoint) [0.0, 0.3 .. pi / 1.5]) ++ [equilibrium])
-  where makePoint s = ( [0.0, (s*2/pi), s, 0.0]
-                      , makeColor (s*1.5/pi) (1-s*1.5/pi) 1.0 1.0)
+  where makePoint s = ( [0.0, 1.0, s, 0.0]
+                      , makeColor (s*1.5/pi) (1-s*1.5/pi) 1.0 1.0 )
         -- equilibrium theta for len=1, angularMomentum=1, mass=1
         equilibrium = ( [0, 1/(sin 0.571743)**2, 0.571743, 0]
                       , white )
+
+
+
+{- Rutherford Scattering -}
+
+rutherfordScattering :: ODE
+rutherfordScattering _ (r:r':theta:theta':[]) =
+  [ r'
+  , -(1/m) * ((-(k / (r**2)) + (l**2 / (m * r**3))))
+  , theta'
+  , 0
+  ]
+  where l = m * r**2 * theta'
+        m = 1
+        k = 2
+rutherfordScattering _ _ = [0,0] -- invalid point
+
+rutherfordScatteringPlotter :: State -> [Float] -> (Float,Float,Float)
+rutherfordScatteringPlotter state (r:_:theta:_:[]) = (x,y,0)
+  where x = r * cos theta
+        y = r * sin theta
+rutherfordScatteringPlotter _ _ = (0,0,0)
+
+rutherfordScatteringTestPoints :: [([Float],Color)]
+rutherfordScatteringTestPoints =
+  [ ([r, r', theta, theta'], makeColor 1.0 0.0 0.0 1.0)
+  ]
+  where m = 1
+        k = 2
+        l = 2.0
+        r = 0.5
+        theta = 0.8*pi
+        energyLevel = 0.0
+        effPotential x = k/x - l**2 / (2 * m * x**2)
+        r' = sqrt $ (2/m) * (energyLevel - effPotential r)
+        theta' = l / (m * r**2)

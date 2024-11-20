@@ -17,6 +17,19 @@ import Graphics.Gloss.Interface.Pure.Game
  - -}
 
 
+
+{- *********************************************************************
+ - *                                                                   *
+ - * WHAT ABOUT systems of points? Currently, a plotter takes          *
+ - * state at some time t and outputs a single screen space            *
+ - * point, so even though the phase space is able to contain multiple *
+ - * points, only one of those can be rendered at any given time       *
+ - *                                                                   *
+ - *********************************************************************
+ - -}
+
+
+
 main :: IO ()
 main = do
   let h = 0.01
@@ -25,6 +38,6 @@ main = do
               $ stateSetStepSize h
               $ stateSetSolver rungeKuttaMethod
               $ stateSetPlotter sphericalPendulumPlotter
-              $ stateSetTrailLimit 1000
+              $ stateSetTrailLimit 500
               $ emptyState
   play window black (stepSizeToFPS h) state renderState interactWithState stepState
