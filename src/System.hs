@@ -3,6 +3,7 @@ module System
 , Solver
 , eulerMethod
 , rungeKuttaMethod
+, module LinearAlgebra
 ) where
 
 import LinearAlgebra

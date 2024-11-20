@@ -1,29 +1,40 @@
 module State
 ( State(..)
 , StateSolver(..)
-, setPoints
-, setTrailLimit
-, setSystem
-, setStepSize
-, setSolver
-, setSolvers
-, setPlotter
 , emptyState
 , exampleState
+, stateSetPoints
+, stateSetTrailLimit
+, stateSetSystem
+, stateSetStepSize
+, stateSetSolver
+, stateSetSolvers
+, stateSetPlotter
+, stateSetCamera
+, statePressKey
+, stateUnpressKey
+, Camera(..)
+, cameraSetPos
+, cameraSetRight
+, cameraSetUp
+, cameraSetDir
+, cameraSetFieldOfView
+, module System
 ) where
 
-import System
 import Graphics.Gloss.Data.Color (Color, green)
 import Graphics.Gloss.Data.Picture (Path)
+import qualified Graphics.Gloss.Interface.Pure.Game as G (Key(..),SpecialKey(..),KeyState(..))
 
+import System
 
 
 data Camera = Camera
   { pos :: [Float]
+  , right :: [Float]
   , up :: [Float]
   , dir :: [Float]
-  , right :: [Float]
-  , fov :: Float
+  , fieldOfView :: Float
   , farZ :: Float
   , nearZ :: Float
   }
@@ -31,28 +42,51 @@ data Camera = Camera
 data StateSolver = SingleSolver Solver | MultipleSolvers [Solver]
 
 data State = State
-  { points :: [[Float]]
-  , trails :: [Path]
-  , trailLimit :: Int
-  , colors :: [Color]
-  , system :: ODE
-  , stepSize :: Float
-  , solvers :: StateSolver
-  , plotter :: [Float] -> (Float,Float)
-  -- , camera :: Camera
+  { points      :: [[Float]]
+  , trails      :: [Path]
+  , trailLimit  :: Int
+  , colors      :: [Color]
+  , system      :: ODE
+  , stepSize    :: Float
+  , solvers     :: StateSolver
+  , plotter     :: State -> [Float] -> (Float,Float)
+  , camera      :: Camera
+  , pressedKeys :: [(G.Key,G.KeyState)]
+  , debugLog    :: [String]
   }
 
 emptyState :: State
 emptyState = State
-  { points = []
-  , trails = []
-  , trailLimit = 1000
-  , colors = []
-  , system = (\_ -> id)
-  , stepSize = 0
-  , solvers = SingleSolver (\_ _ _ -> id)
-  , plotter = (\_ -> (0,0))
+  { points      = []
+  , trails      = []
+  , trailLimit  = 1000
+  , colors      = []
+  , system      = (\_ _ -> zeroV)
+  , stepSize    = 0
+  , solvers     = SingleSolver (\_ _ _ -> id)
+  , plotter     = (\_ _ -> (0,0))
+  , camera      = initCamera
+  , pressedKeys = initKeys
+  , debugLog    = []
   }
+  where initCamera = Camera { pos         = [0,0,2]
+                            , right       = [1,0,0]
+                            , up          = [0,1,0]
+                            , dir         = [0,0,-1]
+                            , fieldOfView = pi / 2.0
+                            , farZ        = 10.0
+                            , nearZ       = 0.1 }
+        initKeys = [ (G.Char 'w', G.Up)
+                   , (G.Char 'a', G.Up)
+                   , (G.Char 's', G.Up)
+                   , (G.Char 'd', G.Up)
+                   , (G.SpecialKey G.KeySpace, G.Up)
+                   , (G.SpecialKey G.KeyShiftL, G.Up)
+                   , (G.SpecialKey G.KeyUp, G.Up)
+                   , (G.SpecialKey G.KeyLeft, G.Up)
+                   , (G.SpecialKey G.KeyDown, G.Up)
+                   , (G.SpecialKey G.KeyRight, G.Up)
+                   ]
 
 exampleState :: State
 exampleState = State
@@ -64,32 +98,38 @@ exampleState = State
   , stepSize = 0.1
   , solvers = SingleSolver rungeKuttaMethod
   , plotter = testPlotter
+  , camera = camera emptyState
+  , pressedKeys = pressedKeys emptyState
+  , debugLog = []
   }
   where testSystem w g _ (x:xdot:[]) = [xdot, -(w**2) * x - g*xdot]
         testSystem _ _ _ _ = [0,0] -- invalid point
-        testPlotter (x:y:[]) = (x,y)
-        testPlotter _ = (0,0)
+        testPlotter _ (x:y:[]) = (x,y)
+        testPlotter _ _ = (0,0)
 
 
 
-{- SETTERS -}
+{- STATE SETTERS -}
 
-setPoints :: [([Float],Color)] -> State -> State
-setPoints stuff state = State
+stateSetPoints :: [([Float],Color)] -> State -> State
+stateSetPoints stuff state = State
   { points = pts
-  , trails = map (\x -> [plot x]) pts
+  , trails = map (\x -> [plot state x]) pts
   , trailLimit = trailLimit state
   , colors = cols
   , system = system state
   , stepSize = stepSize state
   , solvers = solvers state
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
   where (pts,cols) = unzip stuff
         plot = plotter state
 
-setTrailLimit :: Int -> State -> State
-setTrailLimit tl state = State
+stateSetTrailLimit :: Int -> State -> State
+stateSetTrailLimit tl state = State
   { points = points state
   , trails = trails state
   , trailLimit = tl
@@ -98,10 +138,13 @@ setTrailLimit tl state = State
   , stepSize = stepSize state
   , solvers = solvers state
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-setSystem :: ODE -> State -> State
-setSystem f state = State
+stateSetSystem :: ODE -> State -> State
+stateSetSystem f state = State
   { points = points state
   , trails = trails state
   , trailLimit = trailLimit state
@@ -110,10 +153,13 @@ setSystem f state = State
   , stepSize = stepSize state
   , solvers = solvers state
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-setStepSize :: Float -> State -> State
-setStepSize h state = State
+stateSetStepSize :: Float -> State -> State
+stateSetStepSize h state = State
   { points = points state
   , trails = trails state
   , trailLimit = trailLimit state
@@ -122,10 +168,13 @@ setStepSize h state = State
   , stepSize = h
   , solvers = solvers state
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-setSolver :: Solver -> State -> State
-setSolver s state = State
+stateSetSolver :: Solver -> State -> State
+stateSetSolver s state = State
   { points = points state
   , trails = trails state
   , trailLimit = trailLimit state
@@ -134,10 +183,13 @@ setSolver s state = State
   , stepSize = stepSize state
   , solvers = SingleSolver s
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-setSolvers :: [Solver] -> State -> State
-setSolvers ss state = State
+stateSetSolvers :: [Solver] -> State -> State
+stateSetSolvers ss state = State
   { points = points state
   , trails = trails state
   , trailLimit = trailLimit state
@@ -146,10 +198,13 @@ setSolvers ss state = State
   , stepSize = stepSize state
   , solvers = MultipleSolvers ss
   , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-setPlotter :: ([Float] -> (Float,Float)) -> State -> State
-setPlotter p state = State
+stateSetPlotter :: (State -> [Float] -> (Float,Float)) -> State -> State
+stateSetPlotter p state = State
   { points = points state
   , trails = trails state
   , trailLimit = trailLimit state
@@ -158,6 +213,119 @@ setPlotter p state = State
   , stepSize = stepSize state
   , solvers = solvers state
   , plotter = p
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
   }
 
-{- END SETTERS -}
+stateSetCamera :: Camera -> State -> State
+stateSetCamera cam state = State
+  { points = points state
+  , trails = trails state
+  , trailLimit = trailLimit state
+  , colors = colors state
+  , system = system state
+  , stepSize = stepSize state
+  , solvers = solvers state
+  , plotter = plotter state
+  , camera = cam
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
+  }
+
+statePressKey :: G.Key -> State -> State
+statePressKey k state = State
+  { points = points state
+  , trails = trails state
+  , trailLimit = trailLimit state
+  , colors = colors state
+  , system = system state
+  , stepSize = stepSize state
+  , solvers = solvers state
+  , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = updatedKeys
+  , debugLog = debugLog state
+  }
+  where updatedKeys = map (\(kk,s) -> if kk == k then (kk,G.Down) else (kk,s))
+                      $ pressedKeys state
+
+stateUnpressKey :: G.Key -> State -> State
+stateUnpressKey k state = State
+  { points = points state
+  , trails = trails state
+  , trailLimit = trailLimit state
+  , colors = colors state
+  , system = system state
+  , stepSize = stepSize state
+  , solvers = solvers state
+  , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = updatedKeys
+  , debugLog = debugLog state
+  }
+  where updatedKeys = map (\(kk,s) -> if kk == k then (kk,G.Up) else (kk,s))
+                      $ pressedKeys state
+
+
+{- END STATE SETTERS -}
+
+
+{- CAMERA SETTERS -}
+
+cameraSetPos :: [Float] -> Camera -> Camera
+cameraSetPos p cam = Camera
+  { pos = p
+  , right = right cam
+  , up = up cam
+  , dir = dir cam
+  , fieldOfView = fieldOfView cam
+  , farZ = farZ cam
+  , nearZ = nearZ cam
+  }
+
+cameraSetRight :: [Float] -> Camera -> Camera
+cameraSetRight r cam = Camera
+  { pos = pos cam
+  , right = r
+  , up = up cam
+  , dir = dir cam
+  , fieldOfView = fieldOfView cam
+  , farZ = farZ cam
+  , nearZ = nearZ cam
+  }
+
+cameraSetUp :: [Float] -> Camera -> Camera
+cameraSetUp u cam = Camera
+  { pos = pos cam
+  , right = right cam
+  , up = u
+  , dir = dir cam
+  , fieldOfView = fieldOfView cam
+  , farZ = farZ cam
+  , nearZ = nearZ cam
+  }
+
+cameraSetDir :: [Float] -> Camera -> Camera
+cameraSetDir d cam = Camera
+  { pos = pos cam
+  , right = right cam
+  , up = up cam
+  , dir = d
+  , fieldOfView = fieldOfView cam
+  , farZ = farZ cam
+  , nearZ = nearZ cam
+  }
+
+cameraSetFieldOfView :: Float -> Camera -> Camera
+cameraSetFieldOfView fov cam = Camera
+  { pos = pos cam
+  , right = right cam
+  , up = up cam
+  , dir = dir cam
+  , fieldOfView = fov
+  , farZ = farZ cam
+  , nearZ = nearZ cam
+  }
+
+{- END CAMERA SETTERS -}
