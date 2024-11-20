@@ -25,6 +25,6 @@ main = do
               $ stateSetStepSize h
               $ stateSetSolver rungeKuttaMethod
               $ stateSetPlotter sphericalPendulumPlotter
-              $ stateSetTrailLimit 100
+              $ stateSetTrailLimit 1000
               $ emptyState
   play window black (stepSizeToFPS h) state renderState interactWithState stepState

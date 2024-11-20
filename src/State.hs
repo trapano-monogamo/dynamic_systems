@@ -23,7 +23,7 @@ module State
 ) where
 
 import Graphics.Gloss.Data.Color (Color, green)
-import Graphics.Gloss.Data.Picture (Path)
+-- import Graphics.Gloss.Data.Picture (Path)
 import qualified Graphics.Gloss.Interface.Pure.Game as G (Key(..),SpecialKey(..),KeyState(..))
 
 import System
@@ -43,13 +43,13 @@ data StateSolver = SingleSolver Solver | MultipleSolvers [Solver]
 
 data State = State
   { points      :: [[Float]]
-  , trails      :: [Path]
+  , trails      :: [[[Float]]]
   , trailLimit  :: Int
   , colors      :: [Color]
   , system      :: ODE
   , stepSize    :: Float
   , solvers     :: StateSolver
-  , plotter     :: State -> [Float] -> (Float,Float)
+  , plotter     :: State -> [Float] -> (Float,Float,Float)
   , camera      :: Camera
   , pressedKeys :: [(G.Key,G.KeyState)]
   , debugLog    :: [String]
@@ -64,7 +64,7 @@ emptyState = State
   , system      = (\_ _ -> zeroV)
   , stepSize    = 0
   , solvers     = SingleSolver (\_ _ _ -> id)
-  , plotter     = (\_ _ -> (0,0))
+  , plotter     = (\_ _ -> (0,0,0))
   , camera      = initCamera
   , pressedKeys = initKeys
   , debugLog    = []
@@ -91,7 +91,7 @@ emptyState = State
 exampleState :: State
 exampleState = State
   { points = [ [100,0] ]
-  , trails = [ [(100,0)] ]
+  , trails = []
   , trailLimit = 1000
   , colors = [ green ]
   , system = testSystem 1.0 0.1
@@ -104,8 +104,8 @@ exampleState = State
   }
   where testSystem w g _ (x:xdot:[]) = [xdot, -(w**2) * x - g*xdot]
         testSystem _ _ _ _ = [0,0] -- invalid point
-        testPlotter _ (x:y:[]) = (x,y)
-        testPlotter _ _ = (0,0)
+        testPlotter _ (x:y:[]) = (x,y,0)
+        testPlotter _ _ = (0,0,0)
 
 
 
@@ -114,7 +114,7 @@ exampleState = State
 stateSetPoints :: [([Float],Color)] -> State -> State
 stateSetPoints stuff state = State
   { points = pts
-  , trails = map (\x -> [plot state x]) pts
+  , trails = map (\x -> [x]) pts
   , trailLimit = trailLimit state
   , colors = cols
   , system = system state
@@ -203,7 +203,7 @@ stateSetSolvers ss state = State
   , debugLog = debugLog state
   }
 
-stateSetPlotter :: (State -> [Float] -> (Float,Float)) -> State -> State
+stateSetPlotter :: (State -> [Float] -> (Float,Float,Float)) -> State -> State
 stateSetPlotter p state = State
   { points = points state
   , trails = trails state

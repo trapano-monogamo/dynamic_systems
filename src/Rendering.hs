@@ -30,10 +30,16 @@ stepSizeToFPS h = round $ 1 / h
 
 renderState :: State -> Picture
 renderState state = pictures
-  $ (colorStuff $ map (pointToCircle) $ points state)
-  ++ (colorStuff $ (map (line) $ trails state))
+  $ (colorStuff $ map (pointToCircle . frustumToScreen . plot) $ points state)
+  ++ (colorStuff $ map (trailToLine . (map frustumToScreen) . (map plot)) $ trails state)
   ++ debugLogTexts
-  where pointToCircle p = (\(x,y) -> translate x y $ circleSolid 10) $ (plotter state) state $ p
+  where w = (fromIntegral $ fst windowSize) / 2.0
+        h = (fromIntegral $ snd windowSize) / 2.0
+        cull = filter isOutOfBounds
+          where isOutOfBounds (x,y,z) = (abs x) > 1.0 || (abs y) > 1.0 || (abs z) > 1.0
+        plot = (plotter state) state
+        pointToCircle (x,y) = translate (w*x) (h*y) $ circleSolid 10
+        trailToLine tr = line $ map (\(x,y) -> (w*x,h*y)) tr
         colorStuff stuff =
           if (length $ colors state) == (length stuff) then
             map (\(pic,c) -> color c pic) $ zip stuff (colors state)
@@ -71,18 +77,14 @@ stepState t state = State
                 ++ [show $ pos $ camera state]
                 ++ [show $ fieldOfView $ camera state]
   }
-  where plot = (plotter state) state
-
-        sol idx = case (solvers state) of
+  where sol idx = case (solvers state) of
                     SingleSolver s -> s (system state) (stepSize state)
                     MultipleSolvers ss -> (ss !! idx) (system state) (stepSize state)
 
         updateTrails ts = map (expandTrail) $ zip ts (points state)
 
         expandTrail (tr,p) =
-          if (length tr) <= (trailLimit state) then
-            tr ++ [plot p]
-          else (tail tr) ++ [plot p]
+          if (length tr) <= (trailLimit state) then tr ++ [p] else (tail tr) ++ [p]
 
         updateCamera cam = do
           let dt = stepSize state
@@ -126,10 +128,15 @@ configSpacePlotter :: state -> [Float] -> (Float,Float)
 configSpacePlotter _ (x:_:[]) = (x,0)
 configSpacePlotter _ _ = (0,0)
 
-spacePlotter3D :: State -> [Float] -> (Float,Float)
+frustumToScreen :: (Float,Float,Float) -> (Float,Float)
+frustumToScreen (x,y,z) = (x,y)
+
+spacePlotter3D :: State -> [Float] -> (Float,Float,Float)
 spacePlotter3D state (x:y:z:[]) = transformed
-  where nearPlane  = 0.1
-        farPlane   = 100.0
+  where w = (fromIntegral $ fst windowSize) / 2
+        h = (fromIntegral $ snd windowSize) / 2
+        nearPlane  = 0.1
+        farPlane   = 10.0
         fov  = fieldOfView $ camera state
         p    = pos         $ camera state
         r    = right       $ camera state
@@ -138,11 +145,7 @@ spacePlotter3D state (x:y:z:[]) = transformed
         lookat     = lookatMatrix p r u d
         projection = perspectiveMatrix fov nearPlane farPlane (w/h)
         transformed = result $ (projection .**. lookat) **. [x,y,z,1]
-        w = (fromIntegral $ fst windowSize) / 2
-        h = (fromIntegral $ snd windowSize) / 2
-        result (x':y':_:w':[]) = (w*x' / w', h*y' / w')
-          -- if (toBeCulled x' y' z') then (0,0) else (w*x', h*y')
-          -- where toBeCulled a b c = (abs c) > 1.0 -- || (abs a) > 1.0 || (abs b) > 1.0
-        result _ = (0,0) -- so the compiler doesn't yell at me
+        result (x':y':z':w':[]) = (x' / w', y' / w', z' / w')
+        result _ = (0,0,0) -- so the compiler doesn't yell at me
 spacePlotter3D state (x:y:[]) = spacePlotter3D state [x,y,0]
-spacePlotter3D _ _ = (0,0)
+spacePlotter3D _ _ = (0,0,0)

@@ -50,11 +50,12 @@ lotkaVolterra a b c d _ (x:y:[]) =
   ]
 lotkaVolterra _ _ _ _ _ _ = [0,0] -- invalid point
 
-lotkaVolterraPlotter :: State -> [Float] -> (Float,Float)
+lotkaVolterraPlotter :: State -> [Float] -> (Float,Float,Float)
 lotkaVolterraPlotter _ (x:y:[]) =
   ( 10 * x - (fromIntegral $ ((fst windowSize) `div` 2))
-  , 10 * y - (fromIntegral $ ((snd windowSize) `div` 2)) )
-lotkaVolterraPlotter _ _ = (0,0)
+  , 10 * y - (fromIntegral $ ((snd windowSize) `div` 2))
+  , 0)
+lotkaVolterraPlotter _ _ = (0,0,0)
 
 lotkaVolterraTestPoints :: [([Float],Color)]
 lotkaVolterraTestPoints = map (ptAndCol) [20.0,25..95]
@@ -76,12 +77,13 @@ lorentzAttractor a b c _ (x:y:z:[]) =
   , x*y - c*z ]
 lorentzAttractor _ _ _ _ _ = [0,0,0] -- invalid point
 
-lorentzAttractorPlotter :: State -> [Float] -> (Float,Float)
-lorentzAttractorPlotter _ (_:y:z:[]) = (30 * y, 30 * z)
-lorentzAttractorPlotter _ _ = (0,0)
+lorentzAttractorPlotter :: State -> [Float] -> (Float,Float,Float)
+lorentzAttractorPlotter _ (_:y:z:[]) = (30 * y, 30 * z,0)
+lorentzAttractorPlotter _ _ = (0,0,0)
 
 lorentzAttractorTestPoints :: [([Float],Color)]
 lorentzAttractorTestPoints = [ ([0.1,-10,1.3],white) ]
+
 
 
 {- Spherical Pendulum -}
@@ -102,19 +104,16 @@ sphericalPendulum _ (_:_:theta:theta':[]) =
         len = 1.0
 sphericalPendulum _ _ = [0,0,0,0] -- invalid points
 
-sphericalPendulumPlotter :: State -> [Float] -> (Float,Float)
-sphericalPendulumPlotter state (phi:_:theta:_:[]) = (x',y')
+sphericalPendulumPlotter :: State -> [Float] -> (Float,Float,Float)
+sphericalPendulumPlotter state (phi:_:theta:_:[]) = spacePlotter3D state [x,y,z]
   where z =  l * (cos phi) * (sin theta) -- x
         x =  l * (sin phi) * (sin theta) -- y
         y = -l * (cos theta) -- z
         l = 1.0
-        -- (x',y') = spacePlotter3D state [y,z,x]
-        (x',y') = spacePlotter3D state [x,y,z]
-sphericalPendulumPlotter _ _ = (0,0)
+sphericalPendulumPlotter _ _ = (0,0,0)
 
 sphericalPendulumTestPoints :: [([Float],Color)]
 sphericalPendulumTestPoints = ((map (makePoint) [0.0, 0.3 .. pi / 1.5]) ++ [equilibrium])
--- sphericalPendulumTestPoints = [equilibrium]
   where makePoint s = ( [0.0, (s*2/pi), s, 0.0]
                       , makeColor (s*1.5/pi) (1-s*1.5/pi) 1.0 1.0)
         -- equilibrium theta for len=1, angularMomentum=1, mass=1
