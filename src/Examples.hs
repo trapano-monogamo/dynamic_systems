@@ -22,10 +22,15 @@ module Examples
 , rutherfordScatteringPlotter
 , rutherfordScatteringTestPoints
 
+, doublePendulum
+, doublePendulumConfigPlotter
+, doublePendulumPhasePlotter
+, doublePendulumTestPoints
+
 , module Rendering
 ) where
 
-import Graphics.Gloss.Data.Color (Color, makeColor, white)
+import Graphics.Gloss.Data.Color (Color, makeColor, white, red, green, blue)
 
 import State
 import Rendering
@@ -156,7 +161,7 @@ sphericalPendulumPlotter state (phi:_:theta:_:[]) = spacePlotter3D state [x,y,z]
 sphericalPendulumPlotter _ _ = (0,0,0)
 
 sphericalPendulumTestPoints :: [([Float],Color)]
-sphericalPendulumTestPoints = ((map (makePoint) [0.0, 0.3 .. pi / 1.5]) ++ [equilibrium])
+sphericalPendulumTestPoints = ((map (makePoint) [0.0, 0.4 .. pi / 1.5]) ++ [equilibrium])
   where makePoint s = ( [0.0, 1.0, s, 0.0]
                       , makeColor (s*1.5/pi) (1-s*1.5/pi) 1.0 1.0 )
         -- equilibrium theta for len=1, angularMomentum=1, mass=1
@@ -168,33 +173,80 @@ sphericalPendulumTestPoints = ((map (makePoint) [0.0, 0.3 .. pi / 1.5]) ++ [equi
 {- Rutherford Scattering -}
 
 rutherfordScattering :: ODE
-rutherfordScattering _ (r:r':theta:theta':[]) =
+rutherfordScattering _ (r:r':theta:theta':l:l':[]) =
   [ r'
-  , -(1/m) * ((-(k / (r**2)) + (l**2 / (m * r**3))))
-  , theta'
+  , -(1/m) * (effPot' r)
+  , l / (m * r**2)
+  , 0
+  , 0
   , 0
   ]
-  where l = m * r**2 * theta'
+  where effPot' x = -(k/x**2) + l**2 / (m * x**3)
         m = 1
-        k = 2
-rutherfordScattering _ _ = [0,0] -- invalid point
+        k = 3
+rutherfordScattering _ _ = [0,0,0,0,0,0] -- invalid point
 
 rutherfordScatteringPlotter :: State -> [Float] -> (Float,Float,Float)
-rutherfordScatteringPlotter state (r:_:theta:_:[]) = (x,y,0)
+rutherfordScatteringPlotter state (r:_:theta:_:_:_:[]) = (x,y,0)
   where x = r * cos theta
         y = r * sin theta
 rutherfordScatteringPlotter _ _ = (0,0,0)
 
 rutherfordScatteringTestPoints :: [([Float],Color)]
 rutherfordScatteringTestPoints =
-  [ ([r, r', theta, theta'], makeColor 1.0 0.0 0.0 1.0)
+  [ ([r, r', theta, theta', l, 0], makeColor 1.0 0.0 0.0 1.0)
   ]
   where m = 1
-        k = 2
-        l = 2.0
+        k = 3
         r = 0.5
-        theta = 0.8*pi
-        energyLevel = 0.0
-        effPotential x = k/x - l**2 / (2 * m * x**2)
-        r' = sqrt $ (2/m) * (energyLevel - effPotential r)
-        theta' = l / (m * r**2)
+        theta = pi
+        r' = -1.0
+        theta' = 0.1
+        l = theta' * m * r**2
+        -- effPot x = k/x - l**2 / (2 * m * x**2)
+        -- l = 1.4
+        -- r = 0.5
+        -- theta = 0.8*pi
+        -- r' = sqrt $ (2/m) * (energyLevel - effPotential r)
+        -- theta' = l / (m * r**2)
+        -- energyLevel = (m/2) * (r'**2 + r**2 * theta'**2) + (effPotential r)
+
+
+
+{- Double Pendulum -}
+
+doublePendulum :: ODE
+doublePendulum _ (theta:theta':phi:phi':idx:[]) =
+  [ theta'
+  , (b * (cos $ theta + phi) - a) / (2 - (cos $ theta + phi)**2)
+  , phi'
+  , -((b * (cos $ theta + phi) - a) / (2 - (cos $ theta + phi)**2)) * (cos $ theta + phi) - b
+  , 0
+  ]
+  where a = -(phi')**2 * (sin $ theta + phi) + 2 * (g/l) * (sin theta)
+        b = -(theta')**2 * (sin $ theta + phi) + (g/l) * (sin phi)
+        g = 9.81
+        l = 1
+doublePendulu _ _ = [0,0,0,0]
+
+doublePendulumConfigPlotter :: State -> [Float] -> (Float,Float,Float)
+doublePendulumConfigPlotter state (theta:_:phi:_:idx:[]) = (x/2,y/2,0)
+  -- spacePlotter3D state [(sin phi) + (sin theta), -(cos phi) - (cos theta), 0]
+  where x = if idx == 0 then (sin theta)    else (sin theta) + (sin phi)
+        y = if idx == 0 then (-(cos theta)) else (-(cos theta) -(cos phi))
+doublePendulumConfigPlotter _ _ = (0,0,0)
+
+doublePendulumPhasePlotter :: State -> [Float] -> (Float,Float,Float)
+doublePendulumPhasePlotter state (theta:theta':phi:phi':idx:[]) = (x/10,y/10,0)
+  -- spacePlotter3D state [(sin phi) + (sin theta), -(cos phi) - (cos theta), 0]
+  where x = if idx == 0 then theta else phi
+        y = if idx == 0 then theta' else phi'
+doublePendulumPhasePlotter _ _ = (0,0,0)
+
+doublePendulumTestPoints :: [ ([Float],Color) ]
+doublePendulumTestPoints = (concat $ map makePoint [0.0,0.0001..0.001]) ++ equilibrium
+  where makePoint s = [ ([pi/2.0, 0.0, pi, -s, 0.0], makeColor (1 - s/0.001) 0.0 (s/0.001) 1.0)
+                      , ([pi/2.0, 0.0, pi, -s, 1.0], makeColor (s/0.001) (1 - s/0.001) 0.0 1.0) ]
+        equilibrium = [ ([pi/8.0, 0.0, -pi/8.0, 0.0, 0.0], white)
+                      , ([pi/8.0, 0.0, -pi/8.0, 0.0, 1.0], white)
+                      ]

@@ -73,9 +73,7 @@ stepState t state = State
   , plotter = plotter state
   , camera = updateCamera $ camera state
   , pressedKeys = pressedKeys state
-  , debugLog = (map (show) $ pressedKeys state)
-                ++ [show $ pos $ camera state]
-                ++ [show $ fieldOfView $ camera state]
+  , debugLog = []
   }
   where sol idx = case (solvers state) of
                     SingleSolver s -> s (system state) (stepSize state)

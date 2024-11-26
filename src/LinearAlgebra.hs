@@ -8,11 +8,12 @@ module LinearAlgebra
 , rotationZMatrix
 , lookatMatrix
 , perspectiveMatrix
+
 ) where
 
 import Data.List (transpose)
 
-class (Show k, Eq k) => KVectorSpace k where
+class (Eq k) => KVectorSpace k where
   (^+^) :: [k] -> [k] -> [k]
   (.*^) :: k -> [k] -> [k]
   (^*.) :: [k] -> k -> [k]
@@ -42,6 +43,14 @@ instance KVectorSpace Float where
   negateV = map ((-1) *)
   inverseK x = 1/x
   norm v = sum $ map (**2) v
+
+-- look into applicative functors
+-- instance KVectorSpace (Float -> Float) where
+--   (^+^) = zipWith (\f g -> (\t -> (f t) + (g t)))
+--   (.*^) x = map (\f -> (\t -> x * f t))
+--   zeroV = repeat (\_ -> 0)
+--   negateV = (.*^) (-1.0) 
+--   norm _ = 0
 
 
 
