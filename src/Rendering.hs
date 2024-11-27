@@ -8,6 +8,8 @@ module Rendering
 , phaseSpacePlotter
 , configSpacePlotter
 , spacePlotter3D
+, parametricCurve
+, parametricSurface
 , module State
 , module LinearAlgebra
 ) where
@@ -19,7 +21,7 @@ import Graphics.Gloss.Interface.Pure.Game
 
 
 windowSize :: (Int,Int)
-windowSize = (1000,1200)
+windowSize = (1400,1400)
 
 window :: Display
 window = InWindow "Dynamic Systems" windowSize (1000,200)
@@ -30,13 +32,14 @@ stepSizeToFPS h = round $ 1 / h
 
 renderState :: State -> Picture
 renderState state = pictures
+  -- could it be just adding concat between frustumToScreen and plot ?
   $ (colorStuff $ map (pointToCircle . frustumToScreen . plot) $ points state)
   ++ (colorStuff $ map (trailToLine . (map frustumToScreen) . (map plot)) $ trails state)
   ++ debugLogTexts
   where w = (fromIntegral $ fst windowSize) / 2.0
         h = (fromIntegral $ snd windowSize) / 2.0
-        cull = filter isOutOfBounds
-          where isOutOfBounds (x,y,z) = (abs x) > 1.0 || (abs y) > 1.0 || (abs z) > 1.0
+        -- cull = filter isOutOfBounds
+        --   where isOutOfBounds (x,y,z) = (abs x) > 1.0 || (abs y) > 1.0 || (abs z) > 1.0
         plot = (plotter state) state
         pointToCircle (x,y) = translate (w*x) (h*y) $ circleSolid 10
         trailToLine tr = line $ map (\(x,y) -> (w*x,h*y)) tr
@@ -147,3 +150,23 @@ spacePlotter3D state (x:y:z:[]) = transformed
         result _ = (0,0,0) -- so the compiler doesn't yell at me
 spacePlotter3D state (x:y:[]) = spacePlotter3D state [x,y,0]
 spacePlotter3D _ _ = (0,0,0)
+
+parametricCurve :: Int                -- num t samples
+                -> (Float,Float)      -- t domain
+                -> (Float -> [Float]) -- parametric equation
+                -> [[Float]]          -- output points
+parametricCurve steps (tmin,tmax) f = map f range
+  where range = [tmin, tmin+step .. tmax]
+        step = (tmax - tmin) / (fromIntegral steps)
+
+parametricSurface :: Int -> Int                 -- num u and v samples
+                  -> (Float,Float)              -- u domain
+                  -> (Float,Float)              -- v domain
+                  -> ((Float,Float) -> [Float]) -- parametric equation
+                  -> [[Float]]
+parametricSurface uSteps vSteps (umin,umax) (vmin,vmax) f = map f range
+  where range = [(u,v)
+                | u <- [umin,umin+uStep .. umax]
+                , v <- [vmin,vmin+vStep .. vmax]]
+        uStep = (umax - umin) / (fromIntegral uSteps)
+        vStep = (vmax - vmin) / (fromIntegral vSteps)

@@ -22,9 +22,15 @@ module Examples
 , rutherfordScatteringPlotter
 , rutherfordScatteringTestPoints
 
+, singlePendulum
+, singlePendulumPlotter
+, singlePendulumTorusPlotter
+, singlePendulumTestPoints
+
 , doublePendulum
 , doublePendulumConfigPlotter
 , doublePendulumPhasePlotter
+, doublePendulumTorusPlotter
 , doublePendulumTestPoints
 
 , module Rendering
@@ -213,6 +219,36 @@ rutherfordScatteringTestPoints =
 
 
 
+{- Single Pendulum -}
+
+singlePendulum :: ODE
+singlePendulum t (phi:phi':[]) =
+  [ phi'
+  , -g * sin phi
+  ]
+  where g = 9.81
+singlePendulum _ _ = [0,0]
+
+singlePendulumPlotter :: State -> [Float] -> (Float,Float,Float)
+singlePendulumPlotter state (phi:phi':[]) = (x,y,0)
+  where x = sin phi
+        y = -cos phi
+singlePendulumPlotter _ _ = (0,0,0)
+
+singlePendulumTorusPlotter :: State -> [Float] -> (Float,Float,Float)
+singlePendulumTorusPlotter state (phi:phi':[]) = spacePlotter3D state [x,y,z]
+  where x = (r + r' * cos phi) * cos phi'
+        y = (r + r' * sin phi) * sin phi'
+        z = sin phi
+        r = 3
+        r' = 1
+singlePendulumTorusPlotter _ _ = (0,0,0)
+
+singlePendulumTestPoints :: [ ([Float],Color) ]
+singlePendulumTestPoints = [ ([0.9 * pi, 0.0], white) ]
+
+
+
 {- Double Pendulum -}
 
 doublePendulum :: ODE
@@ -237,16 +273,26 @@ doublePendulumConfigPlotter state (theta:_:phi:_:idx:[]) = (x/2,y/2,0)
 doublePendulumConfigPlotter _ _ = (0,0,0)
 
 doublePendulumPhasePlotter :: State -> [Float] -> (Float,Float,Float)
-doublePendulumPhasePlotter state (theta:theta':phi:phi':idx:[]) = (x/10,y/10,0)
-  -- spacePlotter3D state [(sin phi) + (sin theta), -(cos phi) - (cos theta), 0]
+doublePendulumPhasePlotter state (theta:theta':phi:phi':idx:[]) = (x/20, y/20, 0.0)
   where x = if idx == 0 then theta else phi
         y = if idx == 0 then theta' else phi'
+        h = fieldOfView $ camera state
 doublePendulumPhasePlotter _ _ = (0,0,0)
+
+doublePendulumTorusPlotter :: State -> [Float] -> (Float,Float,Float)
+doublePendulumTorusPlotter state (theta:_:phi:_:idx:[]) = spacePlotter3D state [x,y,z]
+  where x = (r + r' * cos phi) * cos (theta - pi/2)
+        y = (r + r' * sin phi) * sin (theta - pi/2)
+        z = (sin phi) - h
+        r = 5
+        r' = 1
+        h = 5
+doublePendulumTorusPlotter _ _ = (0,0,0)
 
 doublePendulumTestPoints :: [ ([Float],Color) ]
 doublePendulumTestPoints = (concat $ map makePoint [0.0,0.0001..0.001]) ++ equilibrium
-  where makePoint s = [ ([pi/2.0, 0.0, pi, -s, 0.0], makeColor (1 - s/0.001) 0.0 (s/0.001) 1.0)
-                      , ([pi/2.0, 0.0, pi, -s, 1.0], makeColor (s/0.001) (1 - s/0.001) 0.0 1.0) ]
+  where makePoint s = [ ([pi/2.0, 0.0, pi, -s, 0.0], makeColor (1 - s/0.001) 0.0 (s/0.001) (0.1 + s/0.001))
+                      , ([pi/2.0, 0.0, pi, -s, 1.0], makeColor (s/0.001) (1 - s/0.001) 0.0 (0.1 + s/0.001)) ]
         equilibrium = [ ([pi/8.0, 0.0, -pi/8.0, 0.0, 0.0], white)
                       , ([pi/8.0, 0.0, -pi/8.0, 0.0, 1.0], white)
                       ]

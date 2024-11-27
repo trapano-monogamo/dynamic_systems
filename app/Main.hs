@@ -23,6 +23,11 @@ import Graphics.Gloss.Interface.Pure.Game
  - * points, only one of those can be rendered at any given time       *
  - *                                                                   *
  - *********************************************************************
+ -
+ -  MAYBE: make a plotter output a list of points, and have the render
+ -         function plot a list of points that come as the concatenation
+ -         of all the plotted lists of points.
+ -         Trails should be left by only the last point rendered?
  - -}
 
 
@@ -33,7 +38,7 @@ main = do
             $ stateSetSystem doublePendulum
             $ stateSetStepSize h
             $ stateSetSolver rungeKuttaMethod
-            $ stateSetPlotter doublePendulumPhasePlotter
+            $ stateSetPlotter doublePendulumTorusPlotter
             $ stateSetTrailLimit 200
             $ emptyState
   play window black (stepSizeToFPS h) state renderState interactWithState stepState

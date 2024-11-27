@@ -218,6 +218,21 @@ stateSetPlotter p state = State
   , debugLog = debugLog state
   }
 
+stateSetConstraint :: [[Float]] -> State -> State
+stateSetConstraint c state = State
+  { points = points state
+  , trails = trails state
+  , trailLimit = trailLimit state
+  , colors = colors state
+  , system = system state
+  , stepSize = stepSize state
+  , solvers = solvers state
+  , plotter = plotter state
+  , camera = camera state
+  , pressedKeys = pressedKeys state
+  , debugLog = debugLog state
+  }
+
 stateSetCamera :: Camera -> State -> State
 stateSetCamera cam state = State
   { points = points state
