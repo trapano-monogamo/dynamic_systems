@@ -34,11 +34,12 @@ import Graphics.Gloss.Interface.Pure.Game
 main :: IO ()
 main = do
   let h = 0.01
-      state = stateSetPoints doublePendulumTestPoints
-            $ stateSetSystem doublePendulum
+      w = 0.1
+      state = stateSetPoints moduledOscillatorTestPoints
+            $ stateSetSystem (moduledOscillator (-2.0))
             $ stateSetStepSize h
             $ stateSetSolver rungeKuttaMethod
-            $ stateSetPlotter doublePendulumTorusPlotter
-            $ stateSetTrailLimit 200
+            $ stateSetPlotter moduledOscillatorPlotter
+            $ stateSetTrailLimit 3000
             $ emptyState
   play window black (stepSizeToFPS h) state renderState interactWithState stepState

@@ -33,6 +33,22 @@ module Examples
 , doublePendulumTorusPlotter
 , doublePendulumTestPoints
 
+, springLoop
+, springLoopPlotter
+, springLoopTestPoints
+
+, bored
+, boredPlotter
+, boredTestPoints
+
+, oscillatingPendulum
+, oscillatingPendulumPlotter
+, oscillatingPendulumTestPoints
+
+, moduledOscillator
+, moduledOscillatorPlotter
+, moduledOscillatorTestPoints
+
 , module Rendering
 ) where
 
@@ -296,3 +312,103 @@ doublePendulumTestPoints = (concat $ map makePoint [0.0,0.0001..0.001]) ++ equil
         equilibrium = [ ([pi/8.0, 0.0, -pi/8.0, 0.0, 0.0], white)
                       , ([pi/8.0, 0.0, -pi/8.0, 0.0, 1.0], white)
                       ]
+
+
+
+{- Spring Loop -}
+
+springLoop :: ODE
+springLoop _ (theta:theta':[]) =
+  [ theta'
+  , -(g/r - k*h/(m*r)) * (cos theta)
+  ]
+  where m = 1
+        r = 1
+        h = 2
+        k = 6
+        g = 9.81
+springLoop _ _ = [0,0]
+
+springLoopPlotter :: State -> [Float] -> (Float,Float,Float)
+springLoopPlotter state (theta:_:[]) = ( (cos theta) / scale, (sin theta) / scale, 0.0 )
+  where scale = fieldOfView $ camera state
+springLoopPlotter _ _ = (0,0,0)
+
+springLoopTestPoints :: [ ([Float],Color) ]
+springLoopTestPoints = [ ([0.0, -2.0], white) ]
+
+
+
+
+{- I'm bored -}
+
+bored :: ODE
+bored t (x:y:[]) =
+  [ -y / (x**2 + y**2) + (sin y)/(1 + x**2)
+  ,  x / (x**2 + y**2) + (sin x)/(1 + y**2)
+  ]
+  where a = -1
+        b = -1
+bored _ _ = [0,0]
+
+boredPlotter :: State -> [Float] -> (Float,Float,Float)
+boredPlotter state (x:y:[]) = ( x/scale, y/scale, 0 )
+  where scale = fieldOfView $ camera state
+boredPlotter _ _ = (0,0,0)
+
+boredTestPoints :: [ ([Float],Color) ]
+boredTestPoints = [ makePoint u v | u <- range, v <- range ]
+  where range = [-1.0,-0.5..1.0]
+        makePoint u v = ([u,v], makeColor r g b 1.0)
+          where r =     (5.0 + u) / 10.0
+                g = 1 - (5.0 + v) / 10.0
+                b = v
+
+
+
+{- Oscillating Pendulum -}
+
+oscillatingPendulum :: (Float -> Float) -> (Float -> Float) -> ODE
+oscillatingPendulum f f'' t (theta:theta':[]) =
+  [ theta'
+  , (- (sin theta) / r) * (g + f'' t)
+  ]
+  where g = 9.81
+        r = 1
+oscillatingPendulum _ _ _ _ = [0,0]
+
+oscillatingPendulumPlotter :: State -> [Float] -> (Float,Float,Float)
+oscillatingPendulumPlotter state (theta:theta':[]) = ( theta / scale, theta' / scale, 0 )
+  where scale = fieldOfView $ camera state
+oscillatingPendulumPlotter _ _ = (0,0,0)
+
+oscillatingPendulumTestPoints :: [ ([Float],Color) ]
+oscillatingPendulumTestPoints = [ makePoint u | u <- [0.0, 0.1 .. 1.0] ]
+  where makePoint u = ([u, 0.0], makeColor u 0.0 (1-u) 1.0)
+
+
+
+
+{- Moduled Oscillator -}
+
+moduledOscillator :: Float -> ODE
+moduledOscillator alpha t (x:x':y:y':[]) =
+  [ x'
+  , -fr * y'
+  , y'
+  , fr * x'
+  ]
+  where fr = 1.0 / ((sqrt $ (x**2) + (y**2)) ** (alpha))
+moduledOscillator _ _ _ = [0, 0, 0, 0]
+
+moduledOscillatorPlotter :: State -> [Float] -> (Float,Float,Float)
+moduledOscillatorPlotter state (x:_:y:_:[]) = ( x / scale, y / scale, 0 )
+  where scale = fieldOfView $ camera state
+moduledOscillatorPlotter _ _ = (0,0,0)
+
+moduledOscillatorTestPoints :: [ ([Float],Color) ]
+moduledOscillatorTestPoints =
+  [ ([1.0, 0.0, 0.0, 1.0], makeColor 1.0 0.0 0.0 1.0)
+  , ([1.1, 0.0, 0.0, 1.0], makeColor 0.0 1.0 0.0 1.0)
+  , ([0.9, 0.0, 0.0, 1.0], makeColor 0.0 0.0 1.0 1.0)
+  ]
